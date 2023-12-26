@@ -284,23 +284,6 @@ def test_string(input, expected):
     assert clean_str(input) == expected
 ```
 
-## Pytest plugin `pytest_generate_tests`
-This hook allows to dynamically generate test cases based on variety of conditions or inputs specific to project's req. It runs before any test is executed.
-```py
-def pytest_generate_tests(metafunc):
-    if 'test_input in metafunc.fixturenames:
-        metafunc.parametrize("test_input, expected_output", test_data)
-```
-```py
-def test_addition(test_input, expected):
-    res = add(*test_input)
-```
-
-**Limitations**: Not a best fit to 
-- generate test cases with extensive data manipulation
-- handle fixture dependencies
-- identify source of failure (debugging is trickier)
-
 ## Pytest Fixture
 Pytest Fixtures allow you to set up necessary prerequisites for running your tests, such as managing resources, data, and dependencies, before executing tests. They help provide a well-organized and efficient testing environment. Fixtures are defined using the `@pytest.fixture` decorator.
 ```
@@ -347,6 +330,54 @@ addopts = -v
 log_cli = True
 log_cli_level = INFO
 ```
+
+## Plugin
+
+### Pytest plugin `pytest_generate_tests`
+This hook allows to dynamically generate test cases based on variety of conditions or inputs specific to project's req. It runs before any test is executed.
+```py
+def pytest_generate_tests(metafunc):
+    if 'test_input in metafunc.fixturenames:
+        metafunc.parametrize("test_input, expected_output", test_data)
+```
+```py
+def test_addition(test_input, expected):
+    res = add(*test_input)
+```
+
+**Limitations**: Not a best fit to 
+- generate test cases with extensive data manipulation
+- handle fixture dependencies
+- identify source of failure (debugging is trickier)
+
+### Controlling time in pytest using Freezegun
+Time manipulation in testing provides you the capability to exert control over and manipulate time during the evaluation of time-dependent code. Consider, for example, a financial application that frequently involves numerous time-dependent activities, including recording transaction dates, account opening dates, transaction times, a significant challenge arises in testing it across diverse time and date scenarios without interfering with the current system date and time automatically recorded during tests. By providing a consistent and reproducible environment, Freezegun ensures that your tests produce reliable results, regardless of when or where they are executed. `pip install freezegun`
+```py
+import pytest
+from freezegun import freeze_time
+from datetime import datetime
+
+@freeze_time("2023-01-01 12:00:00")
+def test_get_greeting_frozen_time():
+    greeting = get_greeting()
+    assert greeting == "Good afternoon!"
+```
+
+Freezegun also comes with a Pytest plugin that allows you to use Freezegun with Pytest. `pip install pytest-freezegun`
+```py
+# Freeze time using freezer fixture
+def test_frozen_date(freezer):
+    now = datetime.now()
+    time.sleep(1)
+    later = datetime.now()
+    assert now == later
+
+## Freezing time with timezone -4
+@freeze_time("2012-01-14 03:21:34", tz_offset=-4)
+def test_timezone():
+    assert datetime.datetime.now() == datetime.datetime(2012, 1, 13, 23, 21, 34)
+```
+Use context managers to control specific blocks of code such as `with freeze_time("2023-01-01 12:00:00"):` instead of using it as a decorator `@freeze_time("2023-01-01 12:00:00")`. When employing the Freezegun object, it is imperative to perform cleanup after executing tests. Always use the stop() method or the context manager to conclude the usage of Freezegun. This will unfreeze the time, helping you to avoid interfering with other tests or parts of your code. Or if using fixtures to freeze time, you can use the yield keyword to perform teardown after the tests.
 
 ### References
 - https://pytest-with-eric.com/
